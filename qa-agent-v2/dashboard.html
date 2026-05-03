@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QA Agent — Powered by Gemini & ADK</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080c14;
+      --surface: #0f1623;
+      --surface2: #161e2e;
+      --border: rgba(99, 179, 237, 0.12);
+      --accent: #63b3ed;
+      --accent2: #4fd1c5;
+      --text: #e2e8f0;
+      --muted: #718096;
+      --glow: rgba(99, 179, 237, 0.15);
+      --success: #68d391;
+      --error: #fc8181;
+    }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,179,237,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,179,237,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glowing orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .orb1 { width: 400px; height: 400px; background: rgba(99,179,237,0.07); top: -100px; right: -100px; animation-delay: 0s; }
+    .orb2 { width: 300px; height: 300px; background: rgba(79,209,197,0.06); bottom: 100px; left: -80px; animation-delay: -4s; }
+    .orb3 { width: 200px; height: 200px; background: rgba(159,122,234,0.05); top: 50%; left: 40%; animation-delay: -8s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to { transform: translate(30px, 20px) scale(1.1); }
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+      animation: fadeUp 0.8s ease both;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,179,237,0.1);
+      border: 1px solid rgba(99,179,237,0.25);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      margin-bottom: 24px;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #e2e8f0 0%, #63b3ed 50%, #4fd1c5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 400;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Stats bar */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Main card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      margin-bottom: 20px;
+      animation: fadeUp 0.8s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+      opacity: 0.5;
+    }
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card:nth-child(3) { animation-delay: 0.2s; }
+
+    .card-label {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-label::before {
+      content: '';
+      width: 16px; height: 1px;
+      background: var(--accent);
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    textarea, input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      padding: 14px 16px;
+      resize: vertical;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      line-height: 1.6;
+    }
+    textarea:focus, input:focus {
+      border-color: rgba(99,179,237,0.5);
+      box-shadow: 0 0 0 3px rgba(99,179,237,0.08);
+    }
+    textarea { min-height: 120px; }
+
+    .field + .field { margin-top: 20px; }
+
+    /* Question row */
+    .question-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .question-row input {
+      flex: 1;
+      resize: none;
+    }
+
+    /* Button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #080c14;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 28px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(99,179,237,0.3);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-icon { font-size: 1rem; }
+
+    /* Examples */
+    .examples {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .example-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 14px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .example-chip:hover {
+      border-color: rgba(99,179,237,0.4);
+      color: var(--accent);
+      background: rgba(99,179,237,0.06);
+    }
+
+    /* Answer section */
+    .answer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      animation: fadeUp 0.5s ease both;
+      display: none;
+    }
+    .answer-card.visible { display: block; }
+
+    .answer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .answer-title {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent2);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .answer-time {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+    }
+
+    .answer-body {
+      padding: 28px;
+    }
+    .answer-text {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 40px;
+    }
+    .answer-text.error { color: var(--error); font-size: 0.9rem; font-weight: 400; }
+
+    /* Loading dots */
+    .loading-dots {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .loading-dots span {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* History */
+    .history-section {
+      margin-top: 40px;
+      animation: fadeUp 0.8s ease 0.3s both;
+    }
+    .history-title {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .history-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+    .history-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: start;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .history-item:hover {
+      border-color: rgba(99,179,237,0.3);
+      background: var(--surface2);
+    }
+    .history-q {
+      font-size: 0.875rem;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .history-a {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-badge {
+      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(104,211,145,0.1);
+      color: var(--success);
+      border: 1px solid rgba(104,211,145,0.2);
+      border-radius: 100px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      animation: fadeUp 0.8s ease 0.4s both;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Spinner in button */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(8,12,20,0.3);
+      border-top-color: #080c14;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="wrapper">
+
+  <header>
+    <div class="badge">
+      <span class="badge-dot"></span>
+      LIVE · Cloud Run · us-central1
+    </div>
+    <h1>QA Agent</h1>
+    <p class="subtitle">Context-grounded question answering powered by Google ADK and Gemini 2.5 Flash</p>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="queryCount">0</div>
+        <div class="stat-label">Queries</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="avgTime">—</div>
+        <div class="stat-label">Avg Response</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">Gemini</div>
+        <div class="stat-label">Model</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">ADK</div>
+        <div class="stat-label">Framework</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="card-label">Input</div>
+
+    <div class="field">
+      <label>CONTEXT PASSAGE</label>
+      <textarea id="context" placeholder="Paste any text passage here — an article, document, or fact you want the agent to reason over..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>YOUR QUESTION</label>
+      <div class="question-row">
+        <input id="question" type="text" placeholder="Ask anything about the context above..." onkeydown="if(event.key==='Enter') askQuestion()"/>
+        <button class="btn" id="askBtn" onclick="askQuestion()">
+          <span class="btn-icon">⚡</span>
+          Ask
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <label>TRY AN EXAMPLE</label>
+      <div class="examples">
+        <span class="example-chip" onclick="loadExample('science')">🔬 Science</span>
+        <span class="example-chip" onclick="loadExample('history')">🏛️ History</span>
+        <span class="example-chip" onclick="loadExample('tech')">💻 Technology</span>
+        <span class="example-chip" onclick="loadExample('hallucination')">🧠 Hallucination Test</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Answer Card -->
+  <div class="answer-card" id="answerCard">
+    <div class="answer-header">
+      <div class="answer-title">
+        <span>⬡</span> Agent Response
+      </div>
+      <div class="answer-time" id="responseTime"></div>
+    </div>
+    <div class="answer-body">
+      <div class="answer-text" id="answerText"></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="historySection" style="display:none;">
+    <div class="history-title">Query History</div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <footer>
+    Built with <a href="https://google.github.io/adk-docs/" target="_blank">Google ADK</a> ·
+    Deployed on <a href="https://cloud.google.com/run" target="_blank">Cloud Run</a> ·
+    <a href="/docs" target="_blank">API Docs →</a>
+  </footer>
+
+</div>
+
+<script>
+  const API_URL = 'https://qa-agent-1021846594095.us-central1.run.app/ask';
+  let queryCount = 0;
+  let totalTime = 0;
+  const history = [];
+
+  const examples = {
+    science: {
+      context: "Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of glucose. This process occurs mainly in the chloroplasts, using the green pigment chlorophyll.",
+      question: "What do plants produce during photosynthesis?"
+    },
+    history: {
+      context: "Mahatma Gandhi led India to independence through nonviolent civil disobedience against British rule. He was born on October 2, 1869 in Porbandar, India. He was assassinated on January 30, 1948 in New Delhi.",
+      question: "Where was Gandhi born and when did he die?"
+    },
+    tech: {
+      context: "Google ADK (Agent Development Kit) is an open-source framework for building AI agents. It supports multi-agent architectures, tool calling, and integrates natively with Gemini models. Agents can be deployed as web services on platforms like Cloud Run.",
+      question: "What is Google ADK used for?"
+    },
+    hallucination: {
+      context: "The Amazon river is located in South America and is the largest river by water discharge in the world. It flows through Brazil, Peru, and Colombia.",
+      question: "Who invented the telephone?"
+    }
+  };
+
+  function loadExample(key) {
+    const ex = examples[key];
+    document.getElementById('context').value = ex.context;
+    document.getElementById('question').value = ex.question;
+    document.getElementById('question').focus();
+  }
+
+  async function askQuestion() {
+    const context = document.getElementById('context').value.trim();
+    const question = document.getElementById('question').value.trim();
+
+    if (!context || !question) {
+      showAnswer('Please fill in both the context and your question.', true);
+      return;
+    }
+
+    const btn = document.getElementById('askBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Thinking...';
+
+    showAnswer('<div class="loading-dots"><span></span><span></span><span></span></div>', false, true);
+
+    const start = Date.now();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context, question })
+      });
+
+      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+      const data = await res.json();
+      const answer = data.answer || 'No answer returned.';
+
+      showAnswer(answer, false);
+      document.getElementById('responseTime').textContent = `${elapsed}s`;
+
+      // Update stats
+      queryCount++;
+      totalTime += parseFloat(elapsed);
+      document.getElementById('queryCount').textContent = queryCount;
+      document.getElementById('avgTime').textContent = (totalTime / queryCount).toFixed(1) + 's';
+
+      // Add to history
+      addToHistory(question, answer, elapsed);
+
+    } catch (err) {
+      showAnswer('Error: ' + err.message, true);
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-icon">⚡</span> Ask';
+  }
+
+  function showAnswer(text, isError = false, isHTML = false) {
+    const card = document.getElementById('answerCard');
+    const answerEl = document.getElementById('answerText');
+
+    card.classList.add('visible');
+    answerEl.className = 'answer-text' + (isError ? ' error' : '');
+
+    if (isHTML) {
+      answerEl.innerHTML = text;
+    } else {
+      answerEl.textContent = text;
+    }
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function addToHistory(question, answer, time) {
+    history.unshift({ question, answer, time });
+    if (history.length > 5) history.pop();
+
+    const section = document.getElementById('historySection');
+    const list = document.getElementById('historyList');
+    section.style.display = 'block';
+
+    list.innerHTML = history.map((h, i) => `
+      <div class="history-item" onclick="loadHistoryItem(${i})">
+        <div>
+          <div class="history-q">${escapeHtml(h.question)}</div>
+          <div class="history-a">${escapeHtml(h.answer)}</div>
+        </div>
+        <div class="history-badge">${h.time}s</div>
+      </div>
+    `).join('');
+  }
+
+  function loadHistoryItem(i) {
+    document.getElementById('answerText').textContent = history[i].answer;
+    document.getElementById('answerText').className = 'answer-text';
+    document.getElementById('answerCard').classList.add('visible');
+    document.getElementById('responseTime').textContent = history[i].time + 's';
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
